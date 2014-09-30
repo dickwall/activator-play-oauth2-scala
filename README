@@ -1,4 +1,17 @@
-This is your new Play application
-=================================
+OAuth2 Login and API with Play and Scala
+========================================
 
-This file will be packaged with your application, when using `activator dist`.
+An example of using github to authorize login and also use the github API with an
+auth token. This is a typesafe activator template with a tutorial. If you aren't sure
+what that is, please look at
+
+https://typesafe.com/activator
+
+for more details. In a nutshell, to use this project:
+
+- Download Typesafe Activator from the above link
+- Run activator using "activator ui"
+- Clone this project (or find it and open it in Activator with a search for play-oauth2-scala)
+- On the right of the activator UI, follow the tutorial. Hit > at the top of the tutorial
+  pane when you are ready the next page. Blue links are active and take you to external
+  resources or location in the code.

@@ -1,0 +1,229 @@
+<html>
+<head>
+    <title>OAuth2 Github Login and API Example in Play</title>
+</head>
+<body>
+<div>
+    <h2>Play, GitHub and OAuth2</h2>
+
+    <p>
+        This template covers the use of OAuth2 to authenticate yourself into a play application,
+        and furthermore using the OAuth2 credentials to access the github api.
+    </p>
+    <p>
+        Before you can use this template successfully, you will need to configure the necessary
+        github api key in github, and then restart activator with the api key and secret in your
+        environment so that the play configuration can pick it up. See the next page of the
+        tutorial for step-by-step instructions for doing that.
+    </p>
+
+</div>
+<div>
+    <h2>Setting up Github API Keys</h2>
+    <p>
+        First, log in to your github account from your browser, and then follow these instructions
+        to prepare for this demo.
+    </p>
+
+    <ol>
+        <li>Use the cog icon at the top right of the github main page to access your settings.</li>
+        <li>Choose <b>Applications</b> from the left settings navigation panel.</li>
+        <li>Under Developer Applications at the top, hit the "Register new application" button.</li>
+        <li>Fill in the form, suggested values are:
+            <ul>
+               <li><b>Application Name:</b> Play OAuth2 Scala Sample (Testing) - Testing is added
+               because in the real world you would tend to have one app registered for development
+               and testing, and another with different API keys for production.</li>
+               <li><b>Homepage URL:</b> Some URL to a site you own or maintain. In real usage
+               this would be the home page URL of your web application. If you really have nothing
+               to put here, just make something up like http://nothingheretesting.com</li>
+               <li><b>Application Description:</b> An example of using OAuth2 for login authorization and API access in Play and Scala.</li>
+               <li><b>Authorization callback URL</b> http://localhost:9000/_oauth-callback</li>
+            </ul>
+            it's important to use the exact Authorization callback URL given here, as this corresponds
+            to the correct URL to redirect to after successful login for running this application on
+            your local machine. For a real application, this would redirect back to the _oauth-callback
+            URL on the real web application (hence the need for a separate one for development/testing).
+        </li>
+        <li>Now hit the <b>Register Application</b> button</li>
+        <li>On the success page, write down or copy your Client ID and Client Secret fields somewhere,
+        as you will need these to make the rest of the demo work.</li>
+    </ol>
+</div>
+<div>
+    <h2>Re-run the Demo with Keys</h2>
+    <p>
+        Now that you have the client ID and secret keys, you need to re-run
+        activator with those settings available. There are various ways you
+        can do this (like putting them into your environment variables and
+        logging out and in), but the easiest is to stop activator, then
+        re-run it as
+    </p>
+        
+        <pre><code>
+GITHUB_AUTH_ID=*CLIENT_ID* GITHUB_AUTH_SECRET=*CLIENT_SECRET* activator ui
+        </code></pre>
+    <p>
+        replacing *CLIENT_ID* and *CLIENT_SECRET* with the values provided
+        by github for your application. All of this command should be on one
+        line so that the environment variables apply to this run of activator.
+    </p>
+    <p>
+        To run the demo and make sure it now works, select Run in activator
+        and then hit <a href="http://localhost:9000">http://localhost:9000</a>.
+        You should see a message to login with github, hit that link and
+        you will either go to a github login dialog to fill out, or
+        if you are already signed in to github, you will be immediately taken
+        to a page listing details about your github projects. If you are not
+        logged in to github you will be taken to that details page after
+        successful login.
+    </p>
+    <p>
+        Note that OAuth2 doesn't make you log in to a github session if
+        you are already logged in to that session. It picks up that
+        existing authentication and uses it to prove that you are you.
+        This makes it a very nice user experience for someone using
+        credentials that they have already authenticated in this browser
+        session.
+    </p>
+    <p>
+        If you want to see the flow with the login page, using another
+        browser tab, log out of your github session and then try using
+        this app again, you will go through the whole flow, including login.
+    </p>
+    <p>
+        Now let's take a look at the code and the OAuth2 flow.
+    </p>
+</div>
+<div>
+    <h2>OAuth2 Authentication</h2>
+    <p>
+        First let's take a look at the
+        <a href="#code/conf/application.conf" class="shortcut">application.conf</a>
+        configuration settings.
+    </p>
+    <p>
+        The important lines are at the bottom of this file:
+    </p>
+    <pre><code>
+github.client.id=${GITHUB_AUTH_ID}
+github.client.secret=${GITHUB_AUTH_SECRET}
+
+github.redirect.url="https://github.com/login/oauth/authorize?client_id=%s&redirect_uri=%s&scope=%s&state=%s"
+    </code></pre>
+    <p>
+        The first two use those client ID and secret values we provided to activator when
+        we re-ran it, and the third is the github authorization URL which will be filled in
+        with the id and secret, as well as a redirect uri field and a state, more on those later.
+    </p>
+    <p>
+        Next, let's look at the
+        <a href="#code/conf/routes" class="shortcut">routes</a> file.
+        which has the following lines of interest:
+    </p>
+    <pre><code>GET        /_oauth-callback        util.OAuth2.callback(code: Option[String], state: Option[String])
+GET        /_oauth-success         util.OAuth2.success</code></pre>
+    <p>
+        The first defines a callback URL that oauth2 will use to confirm that the user
+        has been authenticated. You will notice that this is the same URL we put into
+        the callback field when registering our application on github. The two fields, code
+        and scope, are filled in by github on the callback and we will see what these do
+        later in the tutorial. They are optional because we are also going to use
+        play to provide this callback URL through the routes lookup and don't have codes to
+        use when getting that. The second route is just a page that we will go to once the
+        callback is successful, and that page will list all github project details.
+    </p>
+</div>
+<div>
+    <h2>Redirecting to/from Github Auth</h2>
+    <p>
+        When you first hit the app, the routes file sends you to the
+        <a href="#code/app/controllers/Application.scala" class="shortcut">index method in the
+        Application controller</a>. This first constructs an instance of the OAuth2 class using
+        the application configuration.
+    </p>
+    <p>Next it gets the callback URL from the routes file with
+    <code>util.routes.OAuth2.callback(None, None).absoluteURL()</code>. The two
+    Nones for the optional fields are just to give defaults - we don't want parameters
+    in the URL, just the URL itself to redirect back to.
+    </p>
+    <p>
+        <code>val scope="repo"</code> is a field that github uses, in this case it means
+        request access to the repo scope so that we can perform api operations against the repo.
+    </p>
+    <p>
+        The state on the next line is a randomly generated UUID. This will be used to ensure
+        that the call back from github matches our random UUID and make sure someone else isn't
+        doing something bad to try and get into our site. It's up to us to check the returned
+        code and make sure it matches this one upon handling the callback.
+    </p>
+    <p>
+        Then we construct the big uber URL which will call github with our redirect, scope and
+        random UUID. That URL is then passed into the index page, and at the same time we store
+        the random UUID in our session so that we can check against it when the callback comes.
+    </p>
+    <p>
+        From the <a href="#code/app/views/index.scala.html" class="shortcut">index page</a> the passed in URL
+        is used to send the user to github, where the authentication will occur.
+    </p>
+</div>
+<div>
+    <h2>Handling the callback</h2>
+    <p>
+        Once the user clicks on the github URL from the index page, github takes over. It may
+        be that the user is already logged in to github, in which case github immediately
+        calls back to our own redirect with the necessary fields. If not, the user will be
+        prompted to log in to github, after which the same callback URL back to us will be used.
+    </p>
+    <p>
+        When the callback does come, the routes file pushes it to the
+        <a href="#code/app/util/OAuth2.scala" class="shortcut">callback method in util.OAuth2</a>
+        which takes the optional fields <code>code</code> and <code>state</code>. With a
+        successful callback from github, these will both be there, but we should protect against
+        them not being, which is why the whole method is protected in a for comprehension.
+    </p>
+    <p>
+        Assuming the code and state are present, the method then checks that the returned state
+        is the same as that stored in our session, if not, that constitutes an authorization
+        failure and probably indicates someone is doing something bad. If it matches, the
+        <code>code</code> is then used to communicate back to github to acquire an API token
+        for this session that we can use to make API calls. This token will be different
+        on each successful authentication against github, which protects github itself from
+        spoofing attacks. The code to obtain the github token by using this code can be seen
+        in the
+        <a href="#code/app/util/OAuth2.scala" class="shortcut">getToken method in the OAuth2 class</a>.
+        Compared with the rest of the OAuth2 handshake, getting a token using a code is pretty
+        straightforward and should be clear from examining the getToken method. Once the
+        token is obtained, it is put into the session and the success page called (back in the
+        callback method).
+    </p>
+    <p>
+        If any of these steps fail (i.e. missing parameters, state not matching, etc.), then
+        authentication failures or bad request messages are generated. There is only one
+        happy path through this function, and that's when the code and state are returned and
+        the state matches that expected, and the token can be obtained successfully.
+    </p>
+
+</div>
+<div>
+    <h2>Success, at Last!</h2>
+    <p>
+        Finally let's take a look at the
+        <a href="#code/app/util/OAuth2.scala" class="shortcut">success method in the OAuth2 object</a>.
+        This is deliberately super-simple, since the aim of the tutorial is to show you how to
+        successfully negotiate an OAuth2 connection, but anyway, this method just calls the github
+        API rest URL to get the repo details. To do so, it requests the oauth-token we stored
+        in the session, and if not there we redirect to unauthorized again. Assuming it is there,
+        the token is appended to the webservice request and this is how github knows we can
+        access that rest API call.
+    </p>
+    <p>
+        For simplicity, the results of this call are simply dumped out to the browser as JSON
+        text. In a real application you would parse the results into structured data, and likely
+        implement many other API calls to navigate around your github repositories. The point is
+        that you can use the same oauth-token stored in the session to make those API calls in
+        the same way demonstrated here.
+    </p>
+</div>
+</body>
+</html>

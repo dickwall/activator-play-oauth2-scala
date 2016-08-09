@@ -1,10 +1,10 @@
-# Routes
-# This file defines all application routes (Higher priority routes first)
-# ~~~~
+GET        /                           controllers.Application.index
 
-# Home page
-GET        /                       controllers.Application.index
+GET     /_oauth-github-callback        controllers.OAuth2Github.callback(code: Option[String], state: Option[String])
+GET     /_oauth-github-success         controllers.OAuth2Github.success
 
-# OAuth2 Stuff
-GET     /_oauth-callback        controllers.OAuth2.callback(code: Option[String], state: Option[String])
-GET     /_oauth-success         controllers.OAuth2.success
+GET     /_oauth-linkedin-callback      controllers.OAuth2LinkedIn.callback(code: Option[String], state: Option[String])
+GET     /_oauth-linkedin-success       controllers.OAuth2LinkedIn.success
+
+GET     /_oauth-azure-ad-callback       controllers.OAuth2AzureAD.callback(code: Option[String], state: Option[String])
+GET     /_oauth-azure-ad-success       controllers.OAuth2AzureAD.success

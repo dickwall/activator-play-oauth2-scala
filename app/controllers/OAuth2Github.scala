@@ -9,12 +9,12 @@ import play.api.mvc.{ Action, Controller, Results }
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-class OAuth2 @Inject() (val wsClient: WSClient, val configuration: play.api.Configuration) extends Controller {
+class OAuth2Github @Inject() (val wsClient: WSClient, val configuration: play.api.Configuration) extends Controller {
 
   lazy val githubAuthId = configuration.getString("github.client.id").get
   lazy val githubAuthSecret = configuration.getString("github.client.secret").get
 
-  OAuth2.setConfigs(configuration)
+  OAuth2Github.setConfigs(configuration)
 
   def getToken(code: String): Future[String] = {
     val tokenResponse = wsClient.url("https://github.com/login/oauth/access_token").
@@ -44,7 +44,7 @@ class OAuth2 @Inject() (val wsClient: WSClient, val configuration: play.api.Conf
     } yield {
       if (state == oauthState) {
         getToken(code).map { accessToken =>
-          Redirect(controllers.routes.OAuth2.success()).withSession("oauth-token" -> accessToken)
+          Redirect(controllers.routes.OAuth2Github.success()).withSession("oauth-token" -> accessToken)
         }.recover {
           case ex: IllegalStateException => Unauthorized(ex.getMessage)
         }
@@ -67,7 +67,7 @@ class OAuth2 @Inject() (val wsClient: WSClient, val configuration: play.api.Conf
   }
 }
 
-object OAuth2 {
+object OAuth2Github {
 
   var configuration: play.api.Configuration = _
 

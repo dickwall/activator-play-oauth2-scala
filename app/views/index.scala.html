@@ -1,6 +1,10 @@
-@(message: String, redirectUrl: String)
+@(message: String, redirectUrl: String, redirectUrl2: String, redirectUrl3: String)
 
-@main("Welcome to Play") {
+@main(message) {
     <h2>Not Yet Authenticated</h2>
     <a href="@redirectUrl"><em><b>Log in with GITHUB!</b></em></a>
+    <br>
+    <a href="@redirectUrl2"><em><b>Log in with LinkedIn!</b></em></a>
+    <br>
+    <a href="@redirectUrl3"><em><b>Log in with AzureAD!</b></em></a>
 }
